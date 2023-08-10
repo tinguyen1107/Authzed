@@ -1,11 +1,13 @@
 package middleware
 
 import (
-	"example/authzed/controllers"
 	"fmt"
 	"net/http"
 	"os"
 	"time"
+
+	"example/authzed/initializers"
+	"example/authzed/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -13,7 +15,6 @@ import (
 
 func RequrieAuth(c *gin.Context) {
 	tokenString, err := c.Cookie("Authorization")
-
 	if err != nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
 	}
@@ -33,8 +34,9 @@ func RequrieAuth(c *gin.Context) {
 		}
 
 		// Find account with token stub
-		account, exists := controllers.AccountStorage[claims["sub"].(string)]
-		if !exists {
+		var account models.Account
+		initializers.DB.First(&account, claims["stub"])
+		if account.ID == 0 {
 			c.AbortWithStatus(http.StatusUnauthorized)
 		}
 

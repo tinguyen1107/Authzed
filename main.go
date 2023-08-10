@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
-	"example/authzed/controllers"
-	"example/authzed/initializers"
-	"example/authzed/middleware"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+
+	"example/authzed/controllers"
+	"example/authzed/initializers"
+	"example/authzed/middleware"
 
 	"github.com/gin-gonic/gin"
 
@@ -24,6 +26,8 @@ func execute(c *gin.Context) {
 
 func main() {
 	initializers.LoadEnvVariables()
+	initializers.ConnectToDb()
+	initializers.SyncDatabase()
 
 	r := gin.Default()
 
@@ -35,22 +39,22 @@ func main() {
 	client, err := authzed.NewClient(
 		"grpc.authzed.com:443",
 		systemCerts,
-		grpcutil.WithBearerToken(
-			"tc_golang_server_def_59ad33598ef60d6b7d0a5c935bc33ceeb3dbb2f84d76884a097eb65f4c9684b40c4978961e91cf692140bb4764e10a2491169e8089b6a045469393b8bad756e7",
-		),
+		grpcutil.WithBearerToken(os.Getenv("SPICE_DB_TOKEN")),
 	)
 	if err != nil {
 		log.Fatalf("unable to initialize client: %s", err)
 	}
 
+	// Authentication
 	r.POST("/account/signup", controllers.Signup)
 	r.POST("/account/login", controllers.Login)
+	r.POST("/account/validate", middleware.RequrieAuth, controllers.Validate)
 
-	r.POST("/account/validate", middleware.RequrieAuth, func(c *gin.Context) {
-		account, _ := c.Get("account")
+	// Document interaction
+	r.POST("/document/create", middleware.RequrieAuth, controllers.CreateDocument)
 
-		c.JSON(http.StatusOK, gin.H{"message": account})
-	})
+	// Folder interaction
+	r.POST("/folder/create", middleware.RequrieAuth, controllers.CreateFolder)
 
 	r.GET("/document/:id", middleware.CheckAuth, func(c *gin.Context) {
 		emilia := &v1.SubjectReference{Object: &v1.ObjectReference{
