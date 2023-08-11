@@ -1,34 +1,28 @@
-package controllers
+package services
 
 import (
+	"errors"
 	"net/http"
 
 	"example/authzed/initializers"
 	"example/authzed/models"
-	"example/authzed/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-func CreateFolder(c *gin.Context) {
-	var body struct {
-		Name     string
-		ParentId uint
-	}
+func CreateFolder(name string, parentId uint) (*models.Folder, error) {
+	var parentFolder models.Folder
+	initializers.DB.First(&parentFolder, parentId)
 
-	if c.Bind(&body) != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed to read body",
-		})
-		return
+	folder := models.Folder{
+		Name:     name,
+		ParentId: &parentId,
 	}
-
-	_, err := services.CreateFolder(body.Name, body.ParentId)
+	err := initializers.DB.Model(&parentFolder).Association("Documents").Append(&folder)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err})
+		return nil, errors.New("Failed to create folder")
 	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "create folder successfully"})
+	return &folder, nil
 }
 
 func EditFolder(c *gin.Context) {

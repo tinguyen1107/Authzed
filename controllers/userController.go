@@ -8,6 +8,7 @@ import (
 
 	"example/authzed/initializers"
 	"example/authzed/models"
+	"example/authzed/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -36,9 +37,15 @@ func Signup(c *gin.Context) {
 	}
 
 	// Create account
-	account := models.Account{Email: body.Email, Password: string(hash)}
-	result := initializers.DB.Create(&account)
+	folder, err := services.CreateFolder(body.Email, 1)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Failed to create account",
+		})
+	}
 
+	account := models.Account{Email: body.Email, Password: string(hash), MyDrive: *folder}
+	result := initializers.DB.Create(&account)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Failed to create account",

@@ -1,36 +1,30 @@
-package controllers
+package services
 
 import (
 	"encoding/base64"
+	"errors"
 	"net/http"
 
 	"example/authzed/initializers"
 	"example/authzed/models"
-	"example/authzed/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-func CreateDocument(c *gin.Context) {
-	var body struct {
-		Name     string
-		Content  string // Raw content
-		ParentId uint
-	}
+func CreateDocument(name string, content string, parentId uint) (*models.Document, error) {
+	var folder models.Folder
+	initializers.DB.First(&folder, parentId)
 
-	if c.Bind(&body) != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed to read body",
-		})
-		return
+	doc := models.Document{
+		Name:     name,
+		Content:  base64.StdEncoding.EncodeToString([]byte(content)),
+		ParentId: &parentId,
 	}
-
-	_, err := services.CreateDocument(body.Name, body.Content, body.ParentId)
+	err := initializers.DB.Model(&folder).Association("Documents").Append(&doc)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err})
+		return nil, errors.New("Failed to create document")
 	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "create document successfully"})
+	return &doc, nil
 }
 
 func EditDocument(c *gin.Context) {
