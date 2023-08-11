@@ -2,28 +2,21 @@ package controllers
 
 import (
 	"encoding/base64"
+	"fmt"
 	"net/http"
 
+	"example/authzed/dtos"
 	"example/authzed/initializers"
 	"example/authzed/models"
 	"example/authzed/services"
+	"example/authzed/utils"
 
+	v1 "github.com/authzed/authzed-go/proto/authzed/api/v1"
 	"github.com/gin-gonic/gin"
 )
 
-type CreateDocumentBody struct {
-	Name     string
-	Content  string // Raw content
-	ParentId uint
-}
-
 func CreateDocument(c *gin.Context) {
-	var body struct {
-		Name     string
-		Content  string // Raw content
-		ParentId uint
-	}
-
+	var body dtos.CreateDocumentDto
 	if c.Bind(&body) != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Failed to read body",
@@ -31,10 +24,35 @@ func CreateDocument(c *gin.Context) {
 		return
 	}
 
-	_, err := services.CreateDocument(body.Name, body.Content, body.ParentId)
+	doc, err := services.CreateDocument(body.Name, body.Content, body.ParentId)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": err})
 	}
+
+	// Write relationship
+	docObject := utils.CreateFolderObject(doc.ID)
+	parentfolderSubject := &v1.SubjectReference{Object: utils.CreateFolderObject(*doc.ParentId)}
+	relationship := v1.Relationship{
+		Resource: docObject,
+		Relation: "super_folder",
+		Subject:  parentfolderSubject,
+	}
+
+	res, error := initializers.SpiceClient.WriteRelationships(c, &v1.WriteRelationshipsRequest{
+		Updates: []*v1.RelationshipUpdate{
+			{
+				Operation:    v1.RelationshipUpdate_OPERATION_TOUCH,
+				Relationship: &relationship,
+			},
+		},
+	})
+	if error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Failed to set ownership",
+		})
+		return
+	}
+	fmt.Println(res)
 
 	c.JSON(http.StatusOK, gin.H{"message": "create document successfully"})
 }

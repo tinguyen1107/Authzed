@@ -80,11 +80,15 @@ func Signup(c *gin.Context) {
 				Operation:    v1.RelationshipUpdate_OPERATION_TOUCH,
 				Relationship: &relationship,
 			},
+			{
+				Operation:    v1.RelationshipUpdate_OPERATION_TOUCH,
+				Relationship: &relationship,
+			},
 		},
 	})
 	if error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed to set ownership: " + fmt.Sprint(error),
+			"error": "Failed to set ownership",
 		})
 		return
 	}
@@ -92,7 +96,7 @@ func Signup(c *gin.Context) {
 	// 	Consistency: You can use the zedtoken to read data from SpiceDB that is consistent with a specific write. By including the zedtoken in your read request, you ensure that you're reading data as it was at the time represented by the zedtoken.
 	// Concurrency Control: If you're coordinating writes across multiple parts of a distributed system, you can use the zedtoken to implement optimistic concurrency control. You can include the zedtoken in a write request to specify that the write should only succeed if the current state of the database matches the state at the time represented by the zedtoken. If another write has occurred in the meantime, the write will fail, allowing you to handle the conflict.
 	// Debugging and Auditing: Storing the zedtoken with your data allows you to correlate changes in your application's data with changes in SpiceDB. This can be useful for debugging issues or for auditing changes.
-	fmt.Println(res, error)
+	fmt.Println(res)
 	// https://authzed.com/docs/guides/writing-relationships#two-writes--commit
 	// https://authzed.com/docs/reference/zedtokens-and-zookies
 
