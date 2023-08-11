@@ -16,6 +16,7 @@ func SyncDatabase() {
 	if folder.ID == 0 {
 		// Invalid state -> need to set up
 		rootFolder := models.Folder{
+			OwnerId:    nil,
 			Name:       "root",
 			ParentId:   nil,
 			SubFolders: []models.Folder{},

@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"example/authzed/initializers"
 	"example/authzed/models"
 	"example/authzed/services"
 
+	v1 "github.com/authzed/authzed-go/proto/authzed/api/v1"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -53,7 +55,48 @@ func Signup(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("%#v", account)
+	// Write relationship
+	folderObject := &v1.ObjectReference{
+		ObjectType: os.Getenv("SPICE_DB_PREFIX") + "/folder",
+		ObjectId:   strconv.FormatUint(uint64(folder.ID), 10),
+	}
+
+	userSubject := &v1.SubjectReference{
+		Object: &v1.ObjectReference{
+			ObjectType: os.Getenv("SPICE_DB_PREFIX") + "/user",
+			ObjectId:   strconv.FormatUint(uint64(account.ID), 10),
+		},
+	}
+
+	relationship := v1.Relationship{
+		Resource: folderObject,
+		Relation: "owner",
+		Subject:  userSubject,
+	}
+
+	res, error := initializers.SpiceClient.WriteRelationships(c, &v1.WriteRelationshipsRequest{
+		Updates: []*v1.RelationshipUpdate{
+			{
+				Operation:    v1.RelationshipUpdate_OPERATION_TOUCH,
+				Relationship: &relationship,
+			},
+		},
+	})
+	if error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Failed to set ownership: " + fmt.Sprint(error),
+		})
+		return
+	}
+	// NOTE: res.WrittenAt.Token -> Zedtoken
+	// 	Consistency: You can use the zedtoken to read data from SpiceDB that is consistent with a specific write. By including the zedtoken in your read request, you ensure that you're reading data as it was at the time represented by the zedtoken.
+	// Concurrency Control: If you're coordinating writes across multiple parts of a distributed system, you can use the zedtoken to implement optimistic concurrency control. You can include the zedtoken in a write request to specify that the write should only succeed if the current state of the database matches the state at the time represented by the zedtoken. If another write has occurred in the meantime, the write will fail, allowing you to handle the conflict.
+	// Debugging and Auditing: Storing the zedtoken with your data allows you to correlate changes in your application's data with changes in SpiceDB. This can be useful for debugging issues or for auditing changes.
+	fmt.Println(res, error)
+	// https://authzed.com/docs/guides/writing-relationships#two-writes--commit
+	// https://authzed.com/docs/reference/zedtokens-and-zookies
+
+	// fmt.Println("%#v", account)
 	c.JSON(http.StatusOK, gin.H{"account": fmt.Sprint(account)})
 }
 

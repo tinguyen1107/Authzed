@@ -18,7 +18,7 @@ func CreateFolder(name string, parentId uint) (*models.Folder, error) {
 		Name:     name,
 		ParentId: &parentId,
 	}
-	err := initializers.DB.Model(&parentFolder).Association("Documents").Append(&folder)
+	err := initializers.DB.Model(&parentFolder).Association("SubFolders").Append(&folder)
 	if err != nil {
 		return nil, errors.New("Failed to create folder")
 	}

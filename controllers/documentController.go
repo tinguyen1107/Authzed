@@ -11,6 +11,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type CreateDocumentBody struct {
+	Name     string
+	Content  string // Raw content
+	ParentId uint
+}
+
 func CreateDocument(c *gin.Context) {
 	var body struct {
 		Name     string

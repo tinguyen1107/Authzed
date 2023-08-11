@@ -15,6 +15,7 @@ import (
 
 func _NoAuth(c *gin.Context) {
 	c.Set("auth", false)
+	c.Set("account", nil)
 	c.Next()
 }
 

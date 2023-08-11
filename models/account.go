@@ -6,6 +6,5 @@ type Account struct {
 	gorm.Model
 	Email    string `gorm:"unique"`
 	Password string
-
-	MyDrive Folder
+	MyDrive  Folder `gorm:"foreignKey:OwnerId"`
 }
